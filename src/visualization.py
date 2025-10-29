@@ -9,14 +9,14 @@ Modul für alle Visualisierungs-Funktionen:
 - Segment-Analyse Plots
 """
 
-import pandas as pd
+import logging
+from typing import Dict, List
+
 import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import plotly.figure_factory as ff
-from typing import Dict, List, Any, Optional, Tuple
-import logging
 
 from .config import config
 
@@ -28,7 +28,7 @@ class CampaignVisualizer:
     """
     Hauptklasse für alle Visualisierungen
     """
-    
+
     def __init__(self):
         """Initialisiert den Visualizer"""
         self.color_palette = {
@@ -37,10 +37,10 @@ class CampaignVisualizer:
             'warning': config.ui.WARNING_COLOR,
             'error': config.ui.ERROR_COLOR
         }
-        
+
         # Plotly Template konfigurieren
         self.template = "plotly_white"
-    
+
     def create_conversion_distribution_plot(self, df: pd.DataFrame) -> go.Figure:
         """
         Erstellt Histogramm der Conversion-Wahrscheinlichkeiten
@@ -52,7 +52,7 @@ class CampaignVisualizer:
             Plotly Figure
         """
         fig = px.histogram(
-            df, 
+            df,
             x='Conversion_Wahrscheinlichkeit',
             nbins=30,
             title="Verteilung der Conversion-Wahrscheinlichkeiten",
@@ -62,23 +62,23 @@ class CampaignVisualizer:
             },
             template=self.template
         )
-        
+
         # Durchschnitt als vertikale Linie hinzufügen
         avg_prob = df['Conversion_Wahrscheinlichkeit'].mean()
         fig.add_vline(
-            x=avg_prob, 
-            line_dash="dash", 
+            x=avg_prob,
+            line_dash="dash",
             line_color="red",
             annotation_text=f"Durchschnitt: {avg_prob:.1%}"
         )
-        
+
         fig.update_layout(
             showlegend=False,
             height=400
         )
-        
+
         return fig
-    
+
     def create_segment_pie_chart(self, df: pd.DataFrame) -> go.Figure:
         """
         Erstellt Pie Chart der Kundensegment-Verteilung
@@ -94,23 +94,23 @@ class CampaignVisualizer:
             segment_counts = pd.Series([len(df)], index=['Alle Kunden'])
         else:
             segment_counts = df['Segment_Label'].value_counts()
-        
+
         fig = px.pie(
             values=segment_counts.values,
             names=segment_counts.index,
             title="Kundensegment-Verteilung",
             template=self.template
         )
-        
+
         fig.update_traces(
             textposition='inside',
             textinfo='percent+label'
         )
-        
+
         fig.update_layout(height=400)
-        
+
         return fig
-    
+
     def create_roi_comparison_chart(self, roi_df: pd.DataFrame) -> go.Figure:
         """
         Erstellt ROI-Vergleichschart
@@ -122,8 +122,8 @@ class CampaignVisualizer:
             Plotly Figure
         """
         # Farben basierend auf ROI-Werten
-        colors = ['green' if roi > 0 else 'red' for roi in roi_df['ROI']]
-        
+        ['green' if roi > 0 else 'red' for roi in roi_df['ROI']]
+
         fig = px.bar(
             roi_df,
             x='Szenario',
@@ -134,17 +134,17 @@ class CampaignVisualizer:
             color='ROI',
             color_continuous_scale='RdYlGn'
         )
-        
+
         # Null-Linie hinzufügen
         fig.add_hline(y=0, line_dash="dash", line_color="black", opacity=0.5)
-        
+
         fig.update_layout(
             showlegend=False,
             height=400
         )
-        
+
         return fig
-    
+
     def create_profit_comparison_chart(self, roi_df: pd.DataFrame) -> go.Figure:
         """
         Erstellt Gewinn-Vergleichschart
@@ -165,14 +165,14 @@ class CampaignVisualizer:
             color='Erwarteter_Gewinn',
             color_continuous_scale='Blues'
         )
-        
+
         fig.update_layout(
             showlegend=False,
             height=400
         )
-        
+
         return fig
-    
+
     def create_segment_performance_chart(self, segment_stats: pd.DataFrame) -> go.Figure:
         """
         Erstellt Segment-Performance Chart
@@ -194,46 +194,46 @@ class CampaignVisualizer:
             specs=[[{"secondary_y": False}, {"secondary_y": False}],
                    [{"secondary_y": False}, {"secondary_y": False}]]
         )
-        
+
         segments = segment_stats.index
-        
+
         # Conversion-Wahrscheinlichkeit
         if 'Ø_Conversion_Prob' in segment_stats.columns:
             fig.add_trace(
                 go.Bar(x=segments, y=segment_stats['Ø_Conversion_Prob'], name='Conversion Prob.'),
                 row=1, col=1
             )
-        
+
         # Durchschnittliche Ausgaben
         if 'Ø_Ausgaben' in segment_stats.columns:
             fig.add_trace(
                 go.Bar(x=segments, y=segment_stats['Ø_Ausgaben'], name='Ausgaben'),
                 row=1, col=2
             )
-        
+
         # Kampagnen-Engagement
         if 'Ø_Engagement' in segment_stats.columns:
             fig.add_trace(
                 go.Bar(x=segments, y=segment_stats['Ø_Engagement'], name='Engagement'),
                 row=2, col=1
             )
-        
+
         # Kundenzahl
         if 'Anzahl_Kunden' in segment_stats.columns:
             fig.add_trace(
                 go.Bar(x=segments, y=segment_stats['Anzahl_Kunden'], name='Anzahl'),
                 row=2, col=2
             )
-        
+
         fig.update_layout(
             height=600,
             showlegend=False,
             title_text="Segment-Performance Übersicht",
             template=self.template
         )
-        
+
         return fig
-    
+
     def create_campaign_performance_chart(self, campaign_df: pd.DataFrame) -> go.Figure:
         """
         Erstellt Kampagnen-Performance Chart
@@ -249,9 +249,9 @@ class CampaignVisualizer:
             subplot_titles=['Akzeptanzraten', 'Theoretischer ROI'],
             specs=[[{"secondary_y": False}, {"secondary_y": False}]]
         )
-        
+
         campaigns = campaign_df.index
-        
+
         # Akzeptanzraten
         if 'Akzeptanzrate (%)' in campaign_df.columns:
             fig.add_trace(
@@ -263,7 +263,7 @@ class CampaignVisualizer:
                 ),
                 row=1, col=1
             )
-        
+
         # ROI
         if 'Theoretischer_ROI (%)' in campaign_df.columns:
             colors = ['green' if roi > 0 else 'red' for roi in campaign_df['Theoretischer_ROI (%)']]
@@ -276,16 +276,16 @@ class CampaignVisualizer:
                 ),
                 row=1, col=2
             )
-        
+
         fig.update_layout(
             height=400,
             showlegend=False,
             title_text="Kampagnen-Performance Vergleich",
             template=self.template
         )
-        
+
         return fig
-    
+
     def create_correlation_heatmap(self, df: pd.DataFrame, features: List[str] = None) -> go.Figure:
         """
         Erstellt Korrelations-Heatmap
@@ -302,10 +302,10 @@ class CampaignVisualizer:
             numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
             # Begrenze auf wichtigste Features
             features = numeric_cols[:15] if len(numeric_cols) > 15 else numeric_cols
-        
+
         # Berechne Korrelationsmatrix
         corr_matrix = df[features].corr()
-        
+
         fig = px.imshow(
             corr_matrix,
             title="Korrelationsmatrix wichtiger Features",
@@ -313,14 +313,14 @@ class CampaignVisualizer:
             aspect="auto",
             template=self.template
         )
-        
+
         fig.update_layout(
             width=800,
             height=600
         )
-        
+
         return fig
-    
+
     def create_feature_importance_chart(self, importance_df: pd.DataFrame, top_n: int = 10) -> go.Figure:
         """
         Erstellt Feature Importance Chart
@@ -333,7 +333,7 @@ class CampaignVisualizer:
             Plotly Figure
         """
         top_features = importance_df.head(top_n)
-        
+
         fig = px.bar(
             top_features,
             x='Importance',
@@ -343,14 +343,14 @@ class CampaignVisualizer:
             labels={'Importance': 'Wichtigkeit', 'Feature': 'Feature'},
             template=self.template
         )
-        
+
         fig.update_layout(
             yaxis={'categoryorder': 'total ascending'},
             height=400
         )
-        
+
         return fig
-    
+
     def create_customer_value_distribution(self, df: pd.DataFrame) -> go.Figure:
         """
         Erstellt Kundenwert-Verteilungsplot
@@ -365,7 +365,7 @@ class CampaignVisualizer:
             rows=1, cols=2,
             subplot_titles=['Gesamtausgaben Verteilung', 'Ausgaben vs. Conversion-Wahrscheinlichkeit']
         )
-        
+
         # Histogramm der Gesamtausgaben
         fig.add_trace(
             go.Histogram(
@@ -375,7 +375,7 @@ class CampaignVisualizer:
             ),
             row=1, col=1
         )
-        
+
         # Scatter Plot: Ausgaben vs. Conversion-Wahrscheinlichkeit
         fig.add_trace(
             go.Scatter(
@@ -387,15 +387,15 @@ class CampaignVisualizer:
             ),
             row=1, col=2
         )
-        
+
         fig.update_layout(
             height=400,
             title_text="Kundenwert-Analyse",
             template=self.template
         )
-        
+
         return fig
-    
+
     def create_age_income_analysis(self, df: pd.DataFrame) -> go.Figure:
         """
         Erstellt Alter-Einkommen Analyse
@@ -421,11 +421,11 @@ class CampaignVisualizer:
             template=self.template,
             color_continuous_scale='Viridis'
         )
-        
+
         fig.update_layout(height=500)
-        
+
         return fig
-    
+
     def create_channel_preference_analysis(self, df: pd.DataFrame) -> go.Figure:
         """
         Erstellt Kanal-Präferenz Analyse
@@ -438,13 +438,13 @@ class CampaignVisualizer:
         """
         # Berechne Kanal-Anteile
         channel_data = df[config.data.PURCHASE_CHANNELS].sum()
-        
+
         fig = make_subplots(
             rows=1, cols=2,
             specs=[[{"type": "pie"}, {"type": "bar"}]],
             subplot_titles=['Kanal-Verteilung (Gesamt)', 'Durchschnittliche Käufe pro Kanal']
         )
-        
+
         # Pie Chart für Kanal-Verteilung
         fig.add_trace(
             go.Pie(
@@ -454,7 +454,7 @@ class CampaignVisualizer:
             ),
             row=1, col=1
         )
-        
+
         # Bar Chart für durchschnittliche Käufe
         avg_purchases = df[config.data.PURCHASE_CHANNELS].mean()
         fig.add_trace(
@@ -465,16 +465,16 @@ class CampaignVisualizer:
             ),
             row=1, col=2
         )
-        
+
         fig.update_layout(
             height=400,
             title_text="Kanal-Präferenz Analyse",
             template=self.template
         )
-        
+
         return fig
-    
-    def create_executive_dashboard(self, df: pd.DataFrame, roi_df: pd.DataFrame, 
+
+    def create_executive_dashboard(self, df: pd.DataFrame, roi_df: pd.DataFrame,
                                  segment_stats: pd.DataFrame = None) -> Dict[str, go.Figure]:
         """
         Erstellt Executive Dashboard mit allen wichtigen Visualisierungen
@@ -488,41 +488,41 @@ class CampaignVisualizer:
             Dictionary mit allen Dashboard-Plots
         """
         dashboard_plots = {}
-        
+
         try:
             # Conversion-Verteilung
             dashboard_plots['conversion_distribution'] = self.create_conversion_distribution_plot(df)
-            
+
             # ROI-Vergleich
             dashboard_plots['roi_comparison'] = self.create_roi_comparison_chart(roi_df)
-            
+
             # Gewinn-Vergleich
             dashboard_plots['profit_comparison'] = self.create_profit_comparison_chart(roi_df)
-            
+
             # Segment-Verteilung
             dashboard_plots['segment_pie'] = self.create_segment_pie_chart(df)
-            
+
             # Kundenwert-Analyse
             dashboard_plots['customer_value'] = self.create_customer_value_distribution(df)
-            
+
             # Alter-Einkommen Analyse
             if 'Alter' in df.columns and 'Einkommen' in df.columns:
                 dashboard_plots['age_income'] = self.create_age_income_analysis(df)
-            
+
             # Kanal-Analyse
             dashboard_plots['channel_analysis'] = self.create_channel_preference_analysis(df)
-            
+
             # Segment-Performance (falls verfügbar)
             if segment_stats is not None:
                 dashboard_plots['segment_performance'] = self.create_segment_performance_chart(segment_stats)
-            
+
             logger.info(f"Executive Dashboard mit {len(dashboard_plots)} Plots erstellt")
-            
+
         except Exception as e:
             logger.error(f"Fehler beim Erstellen des Executive Dashboards: {str(e)}")
-        
+
         return dashboard_plots
-    
+
     def save_plots_as_html(self, plots: Dict[str, go.Figure], output_dir: str = "plots/") -> List[str]:
         """
         Speichert Plots als HTML-Dateien
@@ -536,24 +536,24 @@ class CampaignVisualizer:
         """
         import os
         from datetime import datetime
-        
+
         # Erstelle Ausgabe-Verzeichnis
         os.makedirs(output_dir, exist_ok=True)
-        
+
         saved_files = []
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
         for plot_name, fig in plots.items():
             try:
                 filename = f"{plot_name}_{timestamp}.html"
                 filepath = os.path.join(output_dir, filename)
-                
+
                 fig.write_html(filepath)
                 saved_files.append(filepath)
-                
+
                 logger.info(f"Plot gespeichert: {filepath}")
-                
+
             except Exception as e:
                 logger.error(f"Fehler beim Speichern von {plot_name}: {str(e)}")
-        
+
         return saved_files

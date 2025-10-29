@@ -9,11 +9,11 @@ Modul für alle Business Intelligence und ROI-Analyse Funktionen:
 - Business-Metriken und KPIs
 """
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Tuple, Any, Optional
 import logging
-from datetime import datetime
+from typing import Any, Dict, List
+
+import numpy as np
+import pandas as pd
 
 from .config import config
 
@@ -25,12 +25,12 @@ class BusinessAnalytics:
     """
     Hauptklasse für Business Analytics und ROI-Berechnungen
     """
-    
+
     def __init__(self):
         """Initialisiert Business Analytics"""
         self.campaign_cost = config.business.DEFAULT_CAMPAIGN_COST
         self.revenue_per_conversion = config.business.DEFAULT_REVENUE_PER_CONVERSION
-        
+
     def set_business_parameters(self, campaign_cost: float, revenue_per_conversion: float) -> None:
         """
         Setzt Business-Parameter für ROI-Berechnungen
@@ -42,7 +42,7 @@ class BusinessAnalytics:
         self.campaign_cost = campaign_cost
         self.revenue_per_conversion = revenue_per_conversion
         logger.info(f"Business-Parameter aktualisiert: Kosten={campaign_cost}€, Umsatz={revenue_per_conversion}€")
-    
+
     def calculate_roi_scenarios(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Berechnet ROI für verschiedene Targeting-Szenarien
@@ -55,28 +55,28 @@ class BusinessAnalytics:
         """
         if 'Conversion_Wahrscheinlichkeit' not in df.columns:
             raise ValueError("DataFrame muss 'Conversion_Wahrscheinlichkeit' Spalte enthalten")
-        
+
         results = []
-        
+
         for scenario_name, threshold in config.business.ROI_SCENARIOS.items():
             # Kunden auswählen basierend auf Threshold
             selected_customers = df[df['Conversion_Wahrscheinlichkeit'] >= threshold]
-            
+
             # Metriken berechnen
             metrics = self._calculate_scenario_metrics(selected_customers)
             metrics['Szenario'] = scenario_name
             metrics['Threshold'] = threshold
-            
+
             results.append(metrics)
-        
+
         roi_df = pd.DataFrame(results)
-        
+
         # Sortiere nach ROI absteigend
         roi_df = roi_df.sort_values('ROI', ascending=False)
-        
+
         logger.info(f"ROI-Szenarien berechnet für {len(roi_df)} Strategien")
         return roi_df
-    
+
     def _calculate_scenario_metrics(self, selected_customers: pd.DataFrame) -> Dict[str, float]:
         """
         Berechnet Metriken für ein spezifisches Szenario
@@ -88,7 +88,7 @@ class BusinessAnalytics:
             Dictionary mit berechneten Metriken
         """
         num_customers = len(selected_customers)
-        
+
         if num_customers == 0:
             return {
                 'Anzahl_Kunden': 0,
@@ -99,18 +99,18 @@ class BusinessAnalytics:
                 'Erwarteter_Gewinn': 0,
                 'ROI': 0
             }
-        
+
         expected_conversions = selected_customers['Conversion_Wahrscheinlichkeit'].sum()
-        
+
         # Kosten und Umsatz berechnen
         total_costs = num_customers * self.campaign_cost
         expected_revenue = expected_conversions * self.revenue_per_conversion
         expected_profit = expected_revenue - total_costs
-        
+
         # ROI und Conversion Rate
         roi = (expected_profit / total_costs * 100) if total_costs > 0 else 0
         conversion_rate = (expected_conversions / num_customers * 100) if num_customers > 0 else 0
-        
+
         return {
             'Anzahl_Kunden': num_customers,
             'Erwartete_Conversions': round(expected_conversions, 1),
@@ -120,7 +120,7 @@ class BusinessAnalytics:
             'Erwarteter_Gewinn': round(expected_profit, 2),
             'ROI': round(roi, 2)
         }
-    
+
     def analyze_campaign_performance(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Analysiert die Performance historischer Kampagnen
@@ -132,27 +132,27 @@ class BusinessAnalytics:
             DataFrame mit Kampagnen-Performance-Statistiken
         """
         campaign_stats = {}
-        
+
         for col in config.data.CAMPAIGN_COLUMNS + ['Antwort_Letzte_Kampagne']:
             acceptance_rate = df[col].mean() * 100
             total_responses = df[col].sum()
-            
+
             # Berechne theoretischen ROI für diese Kampagne
             theoretical_cost = len(df) * self.campaign_cost
             theoretical_revenue = total_responses * self.revenue_per_conversion
             theoretical_roi = ((theoretical_revenue - theoretical_cost) / theoretical_cost * 100) if theoretical_cost > 0 else 0
-            
+
             campaign_stats[col] = {
                 'Akzeptanzrate (%)': round(acceptance_rate, 2),
                 'Absolute_Antworten': total_responses,
                 'Theoretischer_ROI (%)': round(theoretical_roi, 2)
             }
-        
+
         campaign_df = pd.DataFrame(campaign_stats).T
-        
+
         logger.info("Kampagnen-Performance analysiert")
         return campaign_df
-    
+
     def segment_analysis(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Führt segment-spezifische Business-Analyse durch
@@ -165,7 +165,7 @@ class BusinessAnalytics:
         """
         if 'Segment_Label' not in df.columns:
             raise ValueError("DataFrame muss 'Segment_Label' Spalte enthalten")
-        
+
         segment_metrics = df.groupby('Segment_Label').agg({
             'Conversion_Wahrscheinlichkeit': ['mean', 'std', 'count'],
             'Gesamtausgaben': ['mean', 'median', 'std'],
@@ -174,7 +174,7 @@ class BusinessAnalytics:
             'Alter': 'mean',
             'Einkommen': 'mean'
         }).round(3)
-        
+
         # Spalten-Namen vereinfachen
         segment_metrics.columns = [
             'Ø_Conversion_Prob', 'Std_Conversion_Prob', 'Anzahl_Kunden',
@@ -182,19 +182,19 @@ class BusinessAnalytics:
             'Ø_Engagement', 'Tatsächliche_Conversion_Rate',
             'Ø_Alter', 'Ø_Einkommen'
         ]
-        
+
         # ROI pro Segment berechnen
         segment_roi = []
         for segment in segment_metrics.index:
             segment_data = df[df['Segment_Label'] == segment]
             roi_metrics = self._calculate_scenario_metrics(segment_data)
             segment_roi.append(roi_metrics['ROI'])
-        
+
         segment_metrics['Segment_ROI'] = segment_roi
-        
+
         logger.info(f"Segment-Analyse für {len(segment_metrics)} Segmente abgeschlossen")
         return segment_metrics
-    
+
     def calculate_customer_lifetime_value(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Berechnet Customer Lifetime Value (CLV)
@@ -206,36 +206,36 @@ class BusinessAnalytics:
             DataFrame mit CLV-Berechnungen
         """
         df_clv = df.copy()
-        
+
         # Basis-CLV Berechnung
         # CLV = (Durchschnittlicher Kaufwert × Kauffrequenz × Kundenlebensdauer) - Akquisitionskosten
-        
+
         # Annahmen für CLV-Berechnung
         avg_customer_lifespan_years = 3  # Jahre
         acquisition_cost = self.campaign_cost * 2  # Doppelte Kampagnen-Kosten als Akquisitionskosten
-        
+
         # Kauffrequenz schätzen (basierend auf Gesamtkäufen und Loyalitäts-Score)
         df_clv['Geschätzte_Kauffrequenz_Jahr'] = (
             df_clv['Gesamtkäufe'] / (df_clv['Loyalitäts_Score'] + 0.1)
         ).clip(upper=50)  # Maximum 50 Käufe pro Jahr
-        
+
         # CLV berechnen
         df_clv['Customer_Lifetime_Value'] = (
-            df_clv['Durchschnittlicher_Kaufwert'] * 
-            df_clv['Geschätzte_Kauffrequenz_Jahr'] * 
+            df_clv['Durchschnittlicher_Kaufwert'] *
+            df_clv['Geschätzte_Kauffrequenz_Jahr'] *
             avg_customer_lifespan_years
         ) - acquisition_cost
-        
+
         # CLV-Kategorien
         df_clv['CLV_Kategorie'] = pd.cut(
             df_clv['Customer_Lifetime_Value'],
             bins=[-np.inf, 0, 500, 1500, np.inf],
             labels=['Verlust', 'Niedrig', 'Mittel', 'Hoch']
         )
-        
+
         logger.info("Customer Lifetime Value berechnet")
         return df_clv
-    
+
     def optimize_campaign_budget(self, df: pd.DataFrame, total_budget: float) -> Dict[str, Any]:
         """
         Optimiert Budget-Allokation für maximalen ROI
@@ -248,31 +248,31 @@ class BusinessAnalytics:
             Dictionary mit Optimierungs-Empfehlungen
         """
         max_customers = int(total_budget / self.campaign_cost)
-        
+
         # Sortiere Kunden nach Conversion-Wahrscheinlichkeit
         df_sorted = df.sort_values('Conversion_Wahrscheinlichkeit', ascending=False)
-        
+
         # Wähle Top-Kunden basierend auf Budget
         selected_customers = df_sorted.head(max_customers)
-        
+
         # Berechne optimierte Metriken
         optimized_metrics = self._calculate_scenario_metrics(selected_customers)
-        
+
         # Segment-Verteilung der ausgewählten Kunden
         if 'Segment_Label' in selected_customers.columns:
             segment_distribution = selected_customers['Segment_Label'].value_counts().to_dict()
         else:
             segment_distribution = {}
-        
+
         # Vergleich mit "Alle Kunden" Strategie
         all_customers_metrics = self._calculate_scenario_metrics(df.head(max_customers))
-        
+
         improvement = {
             'ROI_Verbesserung': optimized_metrics['ROI'] - all_customers_metrics['ROI'],
             'Gewinn_Verbesserung': optimized_metrics['Erwarteter_Gewinn'] - all_customers_metrics['Erwarteter_Gewinn'],
             'Conversion_Verbesserung': optimized_metrics['Conversion_Rate'] - all_customers_metrics['Conversion_Rate']
         }
-        
+
         return {
             'total_budget': total_budget,
             'max_customers': max_customers,
@@ -281,7 +281,7 @@ class BusinessAnalytics:
             'improvement': improvement,
             'recommendation': self._generate_budget_recommendation(optimized_metrics, improvement)
         }
-    
+
     def _generate_budget_recommendation(self, metrics: Dict[str, float], improvement: Dict[str, float]) -> str:
         """
         Generiert Budget-Optimierungs-Empfehlung
@@ -301,7 +301,7 @@ class BusinessAnalytics:
             roi_assessment = "Akzeptabel"
         else:
             roi_assessment = "Unrentabel"
-        
+
         recommendation = f"""
         Budget-Optimierung Empfehlung:
         
@@ -315,9 +315,9 @@ class BusinessAnalytics:
         
         Empfehlung: {"Strategie umsetzen" if metrics['ROI'] > 0 else "Budget überdenken"}
         """
-        
+
         return recommendation.strip()
-    
+
     def generate_executive_summary(self, df: pd.DataFrame, roi_df: pd.DataFrame) -> Dict[str, Any]:
         """
         Generiert Executive Summary für Management
@@ -331,12 +331,12 @@ class BusinessAnalytics:
         """
         # Beste Strategie identifizieren
         best_strategy = roi_df.loc[roi_df['ROI'].idxmax()]
-        
+
         # Key Insights
         total_customers = len(df)
         high_potential_customers = len(df[df['Conversion_Wahrscheinlichkeit'] > 0.7])
         avg_conversion_prob = df['Conversion_Wahrscheinlichkeit'].mean()
-        
+
         # Segment-Insights
         if 'Segment_Label' in df.columns:
             best_segment = df.groupby('Segment_Label')['Conversion_Wahrscheinlichkeit'].mean().idxmax()
@@ -344,10 +344,10 @@ class BusinessAnalytics:
         else:
             best_segment = "Nicht verfügbar"
             segment_performance = {}
-        
+
         # Potenzielle Jahres-Impact (bei monatlichen Kampagnen)
         annual_impact = best_strategy['Erwarteter_Gewinn'] * 12
-        
+
         summary = {
             'total_customers': total_customers,
             'high_potential_customers': high_potential_customers,
@@ -364,10 +364,10 @@ class BusinessAnalytics:
             'annual_impact_estimate': annual_impact,
             'key_recommendations': self._generate_key_recommendations(best_strategy, df)
         }
-        
+
         logger.info("Executive Summary generiert")
         return summary
-    
+
     def _generate_key_recommendations(self, best_strategy: pd.Series, df: pd.DataFrame) -> List[str]:
         """
         Generiert Schlüssel-Empfehlungen
@@ -380,7 +380,7 @@ class BusinessAnalytics:
             Liste mit Empfehlungen
         """
         recommendations = []
-        
+
         # ROI-basierte Empfehlungen
         if best_strategy['ROI'] > 50:
             recommendations.append(f"Implementierung der '{best_strategy['Szenario']}' Strategie für maximalen ROI")
@@ -388,18 +388,18 @@ class BusinessAnalytics:
             recommendations.append(f"'{best_strategy['Szenario']}' Strategie bietet positiven ROI - Umsetzung empfohlen")
         else:
             recommendations.append("Überarbeitung der Kampagnen-Parameter erforderlich - aktuell negativer ROI")
-        
+
         # Segment-basierte Empfehlungen
         if 'Segment_Label' in df.columns:
             segment_performance = df.groupby('Segment_Label')['Conversion_Wahrscheinlichkeit'].mean()
             best_segment = segment_performance.idxmax()
             recommendations.append(f"Fokus auf '{best_segment}' Segment für höchste Conversion-Raten")
-        
+
         # Budget-Empfehlungen
         if best_strategy['Anzahl_Kunden'] < len(df) * 0.5:
             recommendations.append("Selektives Targeting reduziert Kosten bei gleichzeitig höherer Effizienz")
-        
+
         # Datenqualität-Empfehlungen
         recommendations.append("Kontinuierliche Modell-Updates mit neuen Kampagnen-Daten für bessere Vorhersagen")
-        
+
         return recommendations
